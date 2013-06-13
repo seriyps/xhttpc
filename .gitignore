@@ -1,0 +1,6 @@
+deps/
+ebin/
+.eunit/
+*.beam
+erl_crash.dump
+.dialyzer_plt

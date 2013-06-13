@@ -1,0 +1,14 @@
+% -*- mode: erlang -*-
+{application, xhttpc,
+ [
+  {description, "eXtensible HTTP Client"},
+  {vsn, "0.0.1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  lhttpc
+                 ]},
+  % {mod, { xhttpc_app, []}},
+  {env, []}
+ ]}.
