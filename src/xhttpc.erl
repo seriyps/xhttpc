@@ -9,10 +9,11 @@
 
 -export([init/1, terminate/2, call/3]).
 -export([request/6, request/2]).
+-export([header_value/2]).
 
 -export_type([session/0, request/0, response/0]).
 
-
+-include("xhttpc.hrl").
 %% HTTP client's session. Shouldn't be used directly bu users!
 -record(session,
         {mw_args :: [middleware()],    %initial middleware arguments
@@ -21,33 +22,25 @@
          http_backend = lhttpc
         }).
 
-%% TODO: move to include/xhttpc.hrl
--record(request,
-        {url :: string(),
-         method = get :: get | post | head,
-         headers = [] :: [http_header()],
-         body :: iolist(),
-         options = [] :: http_options()
-        }).
 
 -type session() :: #session{}.
--type request() :: #request{}.
+-type request() :: #xhttpc_request{}.
 -type response() :: http_response().
+
+%% http_header() and http_options() defined in xhttpc.hrl
 
 -type middleware() :: {Module :: module(), Args :: [any()]}.
 
 -type http_method() :: get | post | head | string(). % string() is "GET" | "POST" etc
--type http_options() :: [{disable_middlewares, [module()]}
-                         | {timeout, timeout()}
-                         | {client_options, any()}
-                         | {atom(), any()}].
+
 -type http_post_body() :: iolist().
 
--type http_header() :: {string(), string()}.
 -type http_resp_body() :: binary() | undefined.
 -type http_response() :: {ok, {{pos_integer(), string()}, [http_header()], http_resp_body()}}
                        | {error, atom()}.
 
+
+%% Main API
 
 %% Initialize middlewares (call each middleware's init/1 and collect states)
 -spec init(middleware()) -> session().
@@ -83,15 +76,15 @@ call(#session{mw_states=States} = Session, Mod, Args) ->
               http_post_body(), http_options()) ->
                      {session(), http_response()}.
 request(S, Url, Method, Headers, Body, Options) ->
-    request(S, #request{url = Url,
-                        method = Method,
-                        headers = Headers,
-                        body = Body,
-                        options = Options}).
+    request(S, #xhttpc_request{url = Url,
+                               method = Method,
+                               headers = Headers,
+                               body = Body,
+                               options = Options}).
 
 %% Perform HTTP request (record API)
--spec request(session(), #request{}) -> {session(), http_response()}.
-request(S, #request{options=Options} = Request) ->
+-spec request(session(), request()) -> {session(), http_response()}.
+request(S, #xhttpc_request{options=Options} = Request) ->
     MWOrder = enabled_middlewares(
                 S#session.mw_order,
                 proplists:get_value(disable_middlewares, Options)),
@@ -106,11 +99,16 @@ request(S, #request{options=Options} = Request) ->
     {S2, Resp2} = apply_response_middlewares(S1, NewRequest, Resp, MWOrder),
     {S2, Resp2}.
 
+%% helpers
+
+-spec header_value(string(), [http_header()]) -> string() | undefined.
+header_value(Name, Headers) ->
+    lhttpc_lib:header_value(Name, Headers).
 
 %% internal
 
-run_request(#request{url=Url, method=Method, headers=Headers,
-                     body=Body, options=Options}, lhttpc) ->
+run_request(#xhttpc_request{url=Url, method=Method, headers=Headers,
+                            body=Body, options=Options}, lhttpc) ->
     Timeout = proplists:get_value(timeout, Options, infinity),
     ClientOptions = proplists:get_value(client_options, Options, []),
     lhttpc:request(Url, Method, Headers, Body, Timeout, ClientOptions).
