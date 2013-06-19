@@ -37,7 +37,7 @@ Batteries included
 * Compression (compression_middleware)
 * Redirects (redirect_middleware)
 * Cookies (cookie_middleware + RFC6265 cookie parser / serializer)
-* Http referrer (referrer_middleware)
+* Http referer (referer_middleware)
 * TODO: Constant additional headers (headers_middleware)
 
 TODO
