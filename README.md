@@ -16,7 +16,8 @@ API
 %% Initialize session
 Session = xhttpc:init(
     [{compression_middleware, []},
-     {headers_middleware, [{"User-Agent", "xhttpc 0.0.1"}]}]),
+     {defaults_middleware, [{append_hdrs, {"User-Agent", "xhttpc 0.0.1"}},
+                            {default_options, {timeout, 10}}]}]),
 
 %% Perform HTTP request, using positional arguments
 {S2, {ok, {200, StatusLine}, Headers, Body}} =
@@ -30,15 +31,27 @@ Session = xhttpc:init(
 %% Terminate session
 ok = xhttpc:terminate(S3).
 ```
+```
+ API call                      | compression_mw |     | defaults_mw   |     | lhttpc/httpc/etc |
+-------------------------------+----------------+-----+---------------+-----+------------------+
+xhttpc:request/2           --> |  request/3     | --> |  request/3    | --> | lhttpc:request/5 |
+                               |                |     |               |     |       VVV        |
+response()                 <-- |  response/4    | <-- |  response/4   | <-- |     response()   |
+
+xhttpc:call(defaults_mw, Arg)<-:----------------:---> |  call/2       |     |                  |
+
+xhttpc:(init|terminate)    --> | init|terminate |     |               |     |                  |
+                           \---:----------------:---> | init|terminate|     |                  |
+```
 
 Batteries included
 ------------------
 
-* Compression (compression_middleware)
+* Traffic compression (compression_middleware)
 * Redirects (redirect_middleware)
 * Cookies (cookie_middleware + RFC6265 cookie parser / serializer)
-* Http referer (referer_middleware)
-* TODO: Constant additional headers (headers_middleware)
+* Automatic http referer (referer_middleware)
+* Constant default / additional headers and options for each request (defaults_middleware)
 
 TODO
 ----

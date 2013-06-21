@@ -9,7 +9,7 @@
 
 -export([init/1, terminate/2, call/3]).
 -export([request/6, request/2]).
--export([header_value/2]).
+-export([header_value/2, normalize_headers/1]). %, normalize_header_name/1]).
 
 -export_type([session/0, request/0, response/0]).
 
@@ -99,11 +99,22 @@ request(S, #xhttpc_request{options=Options} = Request) ->
     {S2, Resp2} = apply_response_middlewares(S1, NewRequest, Resp, MWOrder),
     {S2, Resp2}.
 
+
 %% helpers
 
 -spec header_value(string(), [http_header()]) -> string() | undefined.
 header_value(Name, Headers) ->
     lhttpc_lib:header_value(Name, Headers).
+
+%% Prepare headers for comparision, so "user-agent" and "User-Agent" can be
+%% compared as equal after normalization
+-spec normalize_headers([http_header()]) -> [http_header()].
+normalize_headers(Headers) ->
+    [{normalize_header_name(Name), Value} || {Name, Value} <- Headers].
+
+normalize_header_name(Name) ->
+    %% TODO: maybe capitalize instead of to_lower?
+    string:to_lower(Name).
 
 %% internal
 
