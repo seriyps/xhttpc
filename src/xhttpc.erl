@@ -9,7 +9,7 @@
 
 -export([init/1, terminate/2, call/3]).
 -export([request/6, request/2]).
--export([header_value/2, normalize_headers/1]). %, normalize_header_name/1]).
+-export([header_value/2, normalize_headers/1, normalize_header_name/1]).
 
 -export_type([session/0, request/0, response/0]).
 
@@ -84,19 +84,20 @@ request(S, Url, Method, Headers, Body, Options) ->
 
 %% Perform HTTP request (record API)
 -spec request(session(), request()) -> {session(), http_response()}.
-request(S, #xhttpc_request{options=Options} = Request) ->
+request(S, #xhttpc_request{options=Options, headers=Headers} = Request) ->
     MWOrder = enabled_middlewares(
                 S#session.mw_order,
                 proplists:get_value(disable_middlewares, Options)),
-
+    Request1 = Request#xhttpc_request{headers=normalize_headers(Headers)},
     %% Apply pre-request middlewares
-    {S1, NewRequest} = apply_request_middlewares(S, Request, MWOrder),
+    {S1, Request2} = apply_request_middlewares(S, Request1, MWOrder),
     %% io:format("ROpts ~p, Middlewares ~p~n", [SOpts, MWOrder]),
 
-    Resp = run_request(NewRequest, S#session.http_backend),
+    Resp = run_request(Request2, S#session.http_backend),
+    Resp1 = normalize_response(Resp),
 
     %% Apply post-request middlewares
-    {S2, Resp2} = apply_response_middlewares(S1, NewRequest, Resp, MWOrder),
+    {S2, Resp2} = apply_response_middlewares(S1, Request2, Resp1, MWOrder),
     {S2, Resp2}.
 
 
@@ -112,11 +113,27 @@ header_value(Name, Headers) ->
 normalize_headers(Headers) ->
     [{normalize_header_name(Name), Value} || {Name, Value} <- Headers].
 
+%% Prepare header name for comparision (see `normalize_headers')
+%% If your middleware adds new headers, you SHOULD call this function with
+%% header name like:
+%% <code>NewHeaders = [{normalize_header_name("user-agent"), "xhttpc"}] ++ Headers.</code>
+%% If it's too long to type, just define a macro:
+%% <code>-define(NH(Name), xhttpc:normalize_header_name(Name)).</code>
+-spec normalize_header_name(string()) -> string().
 normalize_header_name(Name) ->
     %% TODO: maybe capitalize instead of to_lower?
     string:to_lower(Name).
 
-%% internal
+
+%%
+%% Internal
+%%
+
+normalize_response({ok, {Status, Headers, Body}}) ->
+    {ok, {Status, normalize_headers(Headers), Body}};
+normalize_response(Other) ->
+    Other.
+
 
 run_request(#xhttpc_request{url=Url, method=Method, headers=Headers,
                             body=Body, options=Options}, lhttpc) ->
