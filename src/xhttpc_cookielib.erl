@@ -2,10 +2,10 @@
 %%% @copyright (C) 2013, Sergey Prokhorov
 %%% @doc
 %%% Cookie management library.
-%%% Implement cookie header parsing/serialization & cookie policy rules.
+%%% Implement cookie header parsing/serialization and cookie policy rules.
 %%% RFC6265
-%%% http://tools.ietf.org/html/rfc6265
-%%% See example usage in cookie_middleware.erl
+%%% [http://tools.ietf.org/html/rfc6265]
+%%% See example usage in middleware/cookie_middleware.erl
 %%% @end
 %%% Created : 21 Jun 2013 by Sergey Prokhorov <me@seriyps.ru>
 

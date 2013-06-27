@@ -51,7 +51,7 @@ apply_defaults(#xhttpc_request{headers=Headers} = Request, DH, DO, AH) when is_l
     apply_defaults(Request#xhttpc_request{headers=NewHeaders}, undefined, DO, AH);
 apply_defaults(#xhttpc_request{headers=Headers} = Request, DH, DO, AH) when is_list(AH) ->
     %% apply append_hdrs. Should be applied AFTER default_hdrs
-    NewHeaders = DH ++ Headers,
+    NewHeaders = AH ++ Headers,
     apply_defaults(Request#xhttpc_request{headers=NewHeaders}, DH, DO, undefined);
 apply_defaults(#xhttpc_request{options=Opts} = Request, DH, DO, AH) when is_list(DO) ->
     %% apply default_options

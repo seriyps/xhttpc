@@ -1,8 +1,8 @@
 %%% @author Sergey Prokhorov <me@seriyps.ru>
 %%% @copyright (C) 2012, Sergey Prokhorov
 %%% @doc
-%%% xhttpc compression middleware - set-up `Accept-Encoding: gzip` header and
-%%% handles `Content-Encoding: gzip` responses
+%%% xhttpc compression middleware - set-up 'Accept-Encoding: gzip' header and
+%%% handles 'Content-Encoding: gzip' responses
 %%% TODO: deflate
 %%% @end
 %%% Created :  8 Oct 2012 by Sergey Prokhorov <me@seriyps.ru>

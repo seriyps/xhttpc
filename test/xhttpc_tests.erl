@@ -9,9 +9,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include("xhttpc.hrl").
-
--define(NHN(H), xhttpc:normalize_header_name(H)).
--define(NH(H), xhttpc:normalize_headers(H)).
+-include("xhttpc_test.hrl").
 
 normalize_test_() ->
     [?_assertEqual(?NHN("SoMe-hEaDeR"), ?NHN("somE-HEADEr")),
@@ -34,7 +32,7 @@ flow_test() ->
     {S3, Response2} = xhttpc:request(S2, "", get, [], <<>>, [{client_options,
                                                                [{response, WaitResponse}]}]),
     ?assertEqual(WaitResponse, Response2),
-    xhttpc:terminate(S3, normal).
+    ok = xhttpc:terminate(S3, normal).
 
 disable_middlewares_test() ->
     S = xhttpc:init([{compression_middleware, []}], test_client),
@@ -52,4 +50,4 @@ disable_middlewares_test() ->
                                                               {client_options,
                                                                [{response, WaitGZResponse}]}]),
     ?assertEqual(WaitGZResponse, Response2),
-    xhttpc:terminate(S3, normal).
+    ok = xhttpc:terminate(S3, normal).

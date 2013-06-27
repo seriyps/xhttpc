@@ -9,6 +9,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include("xhttpc.hrl").
+-include("xhttpc_test.hrl").
 
 comp_middleware_test_() ->
     {foreach,
@@ -25,8 +26,7 @@ add_header_tst({Se, St, Request}) ->
     {update, Se, NewRequest, St} = compression_middleware:request(Se, Request, St),
     NewHdrs = NewRequest#xhttpc_request.headers,
     [?_assertEqual(1, length(NewHdrs)),
-     ?_assertEqual(xhttpc:normalize_headers([{"accept-encoding", "gzip"}]),
-                   NewHdrs)].
+     ?_assertEqual(?NH([{"accept-encoding", "gzip"}]), NewHdrs)].
 
 skip_notcompressed_tst({Se, St, Request}) ->
     Response = {ok, {200, "OK"}, [], <<"the-body">>},
@@ -36,7 +36,7 @@ skip_notcompressed_tst({Se, St, Request}) ->
 unpack_compressed_tst({Se, St, Request}) ->
     Body = <<"the-body">>,
     Response = {ok, {{200, "OK"},
-                xhttpc:normalize_headers([{"content-encoding", "gzip"}]),
+                ?NH([{"content-encoding", "gzip"}]),
                 zlib:gzip(<<"the-body">>)}},
     {update, Se, NewResponse, St} = compression_middleware:response(Se, Request, Response, St),
     {ok, {_, _, NewBody}} = NewResponse,

@@ -1,7 +1,28 @@
 %%% @author Sergey Prokhorov <me@seriyps.ru>
 %%% @copyright (C) 2013, Sergey Prokhorov
 %%% @doc
+%%% xhttpc main API module.
+%%% Example session:
+%%% <pre><code>
+%%% % initialize new session with 3 middlewares
+%%% S = xhttpc:init([{cookie_middleware, []},
+%%%                  {referer_middleware, []},
+%%%                  {compression_middleware, []}]),
 %%%
+%%% % perform request
+%%% {S2, {ok, {{200, "OK"}, ResponseHeaders, ResponseBody}}} =
+%%%     xhttpc:request(S, #xhttpc_request{url="http://example.com/"}),
+%%% % the internal states of middlewares (cookies, current referrer etc) + some
+%%% % meta-information are stored in S2, so, if you need to perform one more
+%%% % request, you should pass new session as first parameter.
+%%%
+%%% % perform 2'nd request
+%%% {S3, {ok, {{200, "OK"}, ResponseHeaders, ResponseBody}}} =
+%%%     xhttpc:request(S2, #xhttpc_request{url="http://example.com/some/page"}),
+%%%
+%%% % terminate session
+%%% ok = xhttpc:terminate(S3).
+%%% </code></pre>
 %%% @end
 %%% Created : 14 Jun 2013 by Sergey Prokhorov <me@seriyps.ru>
 
@@ -42,11 +63,12 @@
 
 %% Main API
 
-%% Initialize middlewares (call each middleware's init/1 and collect states)
+%% @doc Initialize middlewares (call each middleware's `init/1' and collect states)
 -spec init(middleware()) -> session().
 init(Middlewares) ->
     init(Middlewares, lhttpc).
 
+%% @doc Like {@link init/1}, but allow to specify http backend (hardcoded for now)
 init(Middlewares, HttpBackend) ->
     InitFun = fun({Mod, Args}) ->
                       {ok, State} = Mod:init(Args),
@@ -58,7 +80,7 @@ init(Middlewares, HttpBackend) ->
              mw_states=States,
              http_backend=HttpBackend}.
 
-%% Terminate session (call each middleware's terminate/2)
+%% @doc Terminate session (call each middleware's `terminate/2')
 -spec terminate(session(), any()) -> ok.
 terminate(Session, Reason) ->
     %% XXX: middlewares `terminate' called not in mw_order, but in
@@ -67,7 +89,7 @@ terminate(Session, Reason) ->
      || {Module, State} <- orddict:to_list(Session#session.mw_states)],
     ok.
 
-%% Call middleware (call `call/2' of middleware `Mod')
+%% @doc Call middleware (call `call/2' of middleware `Mod')
 -spec call(session(), module(), [any()]) -> {session(), any()}.
 call(#session{mw_states=States} = Session, Mod, Args) ->
     State = orddict:fetch(Mod, States),
@@ -75,7 +97,7 @@ call(#session{mw_states=States} = Session, Mod, Args) ->
     NewSession = update_middleware_state(Mod, Session, NewState),
     {NewSession, Response}.
 
-%% Perform HTTP request (positional argument API)
+%% @doc Perform HTTP request (positional argument API)
 -spec request(session(), string(), http_method(), [http_header()],
               http_post_body(), http_options()) ->
                      {session(), http_response()}.
@@ -86,7 +108,7 @@ request(S, Url, Method, Headers, Body, Options) ->
                                body = Body,
                                options = Options}).
 
-%% Perform HTTP request (record API)
+%% @doc Perform HTTP request (record API)
 -spec request(session(), request()) -> {session(), http_response()}.
 request(S, #xhttpc_request{options=Options, headers=Headers} = Request) ->
     MWOrder = enabled_middlewares(
@@ -111,13 +133,13 @@ request(S, #xhttpc_request{options=Options, headers=Headers} = Request) ->
 header_value(Name, Headers) ->
     lhttpc_lib:header_value(Name, Headers).
 
-%% Prepare headers for comparision, so "user-agent" and "User-Agent" can be
+%% @doc Prepare headers for comparision, so "user-agent" and "User-Agent" can be
 %% compared as equal after normalization
 -spec normalize_headers([http_header()]) -> [http_header()].
 normalize_headers(Headers) ->
     [{normalize_header_name(Name), Value} || {Name, Value} <- Headers].
 
-%% Prepare header name for comparision (see `normalize_headers')
+%% @doc Prepare header name for comparision (see `normalize_headers')
 %% If your middleware adds new headers, you SHOULD call this function with
 %% header name like:
 %% <code>NewHeaders = [{normalize_header_name("user-agent"), "xhttpc"}] ++ Headers.</code>
@@ -152,7 +174,7 @@ run_request(#xhttpc_request{url=Url, method=Method, headers=Headers,
 run_request(#xhttpc_request{options=Options} = Request, test_client) ->
     %% test (fake) HTTP client. Returns value of 'respoonse' client option
     %% as response (if defined), else return dummy 200 response.
-    ClientOptions = proplists:get_value(client_options, Options),
+    ClientOptions = proplists:get_value(client_options, Options, []),
     case proplists:get_value(response, ClientOptions) of
         Resp when is_tuple(Resp) ->
             Resp;
@@ -160,9 +182,9 @@ run_request(#xhttpc_request{options=Options} = Request, test_client) ->
             Fun(Request);
         undefined ->
             {ok,
-             {200, "OK"},
+             {{200, "OK"},
              [{"Test-Header-Name", "Test-Header-Value"}],
-             <<"test-response">>}
+             <<"test-response">>}}
     end.
 
 

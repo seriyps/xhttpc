@@ -7,7 +7,6 @@
 
 -module(xhttpc_middleware).
 
-
 -callback init([Args]) ->
     {ok, State}
         when Args::any(),
