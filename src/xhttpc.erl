@@ -7,7 +7,7 @@
 
 -module(xhttpc).
 
--export([init/1, terminate/2, call/3]).
+-export([init/1, init/2, terminate/2, call/3]).
 -export([request/6, request/2]).
 -export([header_value/2, normalize_headers/1, normalize_header_name/1]).
 
@@ -45,6 +45,9 @@
 %% Initialize middlewares (call each middleware's init/1 and collect states)
 -spec init(middleware()) -> session().
 init(Middlewares) ->
+    init(Middlewares, lhttpc).
+
+init(Middlewares, HttpBackend) ->
     InitFun = fun({Mod, Args}) ->
                       {ok, State} = Mod:init(Args),
                       {Mod, State}
@@ -52,7 +55,8 @@ init(Middlewares) ->
     States = orddict:from_list(lists:map(InitFun, Middlewares)),
     #session{mw_args=Middlewares,
              mw_order=[Mod || {Mod, _} <- Middlewares],
-             mw_states=States}.
+             mw_states=States,
+             http_backend=HttpBackend}.
 
 %% Terminate session (call each middleware's terminate/2)
 -spec terminate(session(), any()) -> ok.
@@ -134,12 +138,33 @@ normalize_response({ok, {Status, Headers, Body}}) ->
 normalize_response(Other) ->
     Other.
 
-
+%% In case we need possibility to add custom HTTP backends in a flexible way,
+%% we can rewrite xhttpc such that just define `tun_request' functions in
+%% separate adapter modules, like `xhttpc_lhttpc', `xhttpc_test_client',
+%% `xhttpc_httpc' etc and call them from
+%% request/2 like HttpBackend:run_request(...).
+%% For now we just hardcode backends for simplicity.
 run_request(#xhttpc_request{url=Url, method=Method, headers=Headers,
                             body=Body, options=Options}, lhttpc) ->
     Timeout = proplists:get_value(timeout, Options, infinity),
     ClientOptions = proplists:get_value(client_options, Options, []),
-    lhttpc:request(Url, Method, Headers, Body, Timeout, ClientOptions).
+    lhttpc:request(Url, Method, Headers, Body, Timeout, ClientOptions);
+run_request(#xhttpc_request{options=Options} = Request, test_client) ->
+    %% test (fake) HTTP client. Returns value of 'respoonse' client option
+    %% as response (if defined), else return dummy 200 response.
+    ClientOptions = proplists:get_value(client_options, Options),
+    case proplists:get_value(response, ClientOptions) of
+        Resp when is_tuple(Resp) ->
+            Resp;
+        Fun when is_function(Fun) ->
+            Fun(Request);
+        undefined ->
+            {ok,
+             {200, "OK"},
+             [{"Test-Header-Name", "Test-Header-Value"}],
+             <<"test-response">>}
+    end.
+
 
 enabled_middlewares(Middlewares, undefined) ->
     Middlewares;

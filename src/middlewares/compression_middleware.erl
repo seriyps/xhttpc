@@ -17,8 +17,9 @@
 init([]) -> {ok, []}.
 
 request(Session, #xhttpc_request{headers=Headers} = Request, State) ->
-    Hdr = {<<"Accept-Encoding">>, <<"gzip">>},
-    NewHdrs = lists:keystore(<<"Accept-Encoding">>, 1, Headers, Hdr),
+    HName = xhttpc:normalize_header_name("Accept-Encoding"),
+    Hdr = {HName, "gzip"},
+    NewHdrs = lists:keystore(HName, 1, Headers, Hdr),
     {update, Session, Request#xhttpc_request{headers=NewHdrs}, State}.
 
 response(Session, _Req, {ok, {Status, Hdrs, Body}}, State) ->
