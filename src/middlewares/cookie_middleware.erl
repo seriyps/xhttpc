@@ -1,7 +1,8 @@
 %%% @author Sergey Prokhorov <me@seriyps.ru>
 %%% @copyright (C) 2012, Sergey Prokhorov
 %%% @doc
-%%% HTTP cookie middleware
+%%% Simple HTTP cookie middleware
+%%% Store cookies in memory in orddict.
 %%% @end
 %%% Created :  8 Oct 2012 by Sergey Prokhorov <me@seriyps.ru>
 
@@ -25,7 +26,9 @@ init([]) ->
 request(Session, #xhttpc_request{url=Url, headers=Headers} = Req, State) ->
     {ok, ParsedUrl} = http_uri:parse(Url),
     Cookies = lookup_cookies(State, ParsedUrl),
-    NewHdrs = xhttpc_cookielib:cookie_header(ParsedUrl, Cookies) ++ Headers,
+    CookieHeaders = xhttpc:normalize_headers(
+                      xhttpc_cookielib:cookie_header(ParsedUrl, Cookies)),
+    NewHdrs = CookieHeaders ++ Headers,
     {update, Session, Req#xhttpc_request{headers=NewHdrs}, State}.
 
 response(Session, #xhttpc_request{url=Url}, {ok, {_, Hdrs, _}} = Resp, State) ->
@@ -53,39 +56,46 @@ init_cookies() ->
     #cookie_jar{}.
 
 lookup_cookies(#cookie_jar{values=Cookies}, Url) ->
-    UrlKey = xhttpc_cookielib:lookup_key(Url),
-    orddict:fold(fun({CookieKey, _Name}, C, Acc) when CookieKey == UrlKey ->
+    {HKey, PKey} = xhttpc_cookielib:lookup_key(Url),
+    orddict:fold(fun({CHKey, CPKey, _Name}, C, Acc)
+                       when (CHKey == HKey) and (CPKey == PKey) ->
                          [C | Acc];
-                      (_, _, Acc) ->
-                         Acc
+                      ({CHKey, CPKey, _Name}, C,  Acc) ->
+                         Allow = (lists:prefix(CHKey, HKey)
+                                  and lists:prefix(CPKey, PKey)),
+                         if Allow -> [C | Acc];
+                            true -> Acc
+                         end
                  end, [], Cookies).
 
 update_cookies(Jar, []) ->
     Jar;
 update_cookies(#cookie_jar{values=CurCookies} = CookieJar, Cookies) ->
-    Now = os:timestamp(),
+    Now = calendar:universal_time(),
     NewCookies = update_cookies1(CurCookies, Cookies, Now),
     CookieJar#cookie_jar{values=NewCookies,
                          last_updated=Now}.
 
 update_cookies1(CurCookies, Cookies, Now) ->
     {ToDelete, ToUpsert} = lists:foldl(
-                             fun(#xhttpc_cookie{expires=Exp, value=Val} = C, {D, U})
-                                   when (Exp < Now) or (Val == "") ->
+                             fun(#xhttpc_cookie{expires=Exp} = C, {D, U})
+                                   when (Exp =/= session) andalso (Exp < Now) ->
+                                     %% to delete
                                      {[xhttpc_cookielib:cookie_key(C) | D], U};
                                 (C, {D, U}) ->
+                                     %% to add/update
                                      {D, [{xhttpc_cookielib:cookie_key(C), C} | U]}
                              end,
                              {[], []},
                              Cookies),
-    %% remove cookies that expired or with empty values
+    %% remove cookies that expired
     CurCookies1 =
         case ToDelete of
             [] ->
                 CurCookies;
             _ ->
                 DelSet = ordsets:from_list(ToDelete),
-                orddict:filter(fun({Key, _Val}) ->
+                orddict:filter(fun(Key, _Val) ->
                                        not ordsets:is_element(Key, DelSet)
                                end,
                                CurCookies)
@@ -97,6 +107,9 @@ update_cookies1(CurCookies, Cookies, Now) ->
         _ ->
             ToUpsertDict = orddict:from_list(ToUpsert),
             %% replace old cookies with new ones on conflict
-            orddict:merge(fun(_K, _V1, V2) -> V2 end,
+            %% RFC 6265, 5.3 / 11
+            orddict:merge(fun(_K, V1, V2) ->
+                                  V2#xhttpc_cookie{created=V1#xhttpc_cookie.created}
+                          end,
                           CurCookies1, ToUpsertDict)
     end.

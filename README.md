@@ -2,7 +2,7 @@ xhttpc - eXtensible HTTP(S) Client for Erlang
 ==========================================
 
 Easily extensible - just add your own middlewares.
-Simple core - all the additional functionality splitted to middleware modules.
+Simple tiny core - all the additional functionality splitted to middleware modules.
 Not a http client, but http client wrapper: built on top of lhttpc HTTP client,
 support for other HTTP clients (httpc, hackney etc) can be added easily.
 
@@ -52,6 +52,8 @@ Batteries included
 * Cookies (cookie_middleware + RFC6265 cookie parser / serializer)
 * Automatic http referer (referer_middleware)
 * Constant default / additional headers and options for each request (defaults_middleware)
+* TODO: basic HTTP auth middleware
+* TODO: history middleware
 
 TODO
 ----

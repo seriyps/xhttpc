@@ -35,8 +35,8 @@ response(_Session, _Req, _Resp, _State) ->
 redirect(_, undefined, _, _, _) ->
     error_logger:info_msg("Invalid redirect location"),
     noaction;
-redirect(303, Url, #xhttpc_request{options=Options}, Session, State) ->
-    NewRequest = #xhttpc_request{url=Url, method=get, options=Options},
+redirect(303, Url, #xhttpc_request{options=Options, headers=Hdrs}, Session, State) ->
+    NewRequest = #xhttpc_request{url=Url, method=get, headers=Hdrs, options=Options},
     {NewSession, NewResp} = xhttpc:request(Session, NewRequest),
     {update, NewSession, NewResp, State};
 redirect(Code, Url, Req, Session, State)
