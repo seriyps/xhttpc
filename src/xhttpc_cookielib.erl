@@ -25,21 +25,25 @@
                 Port :: pos_integer(),
                 Path :: string(),
                 Query :: string()}.
+%% type, returned by OTP `http_uri:parse/1'.
 
 -type lookup_key() :: {RevDomain::string(), Path::string()}.
 -type cookie_key() :: {RevDomain::string(), Path::string(), Name::string()}.
 
-%% You may lookup all cookies, that may be allowed for this URL, using this
+%% @doc You may lookup all cookies, that may be allowed for this URL, using this
 %% key as prefixes, eg:
-%% <code>
+%%
+%% Pseudocode
+%% <pre>
 %% {HostKey, PathKey} = lookup_key(Url)
 %% SELECT * FROM cookies
 %% WHERE $HostKey LIKE (cookies.key_host || '%')
 %%       AND $PathKey LIKE (cookies.key_path || '%')
-%% </code>
-%% <code>
+%% </pre>
+%% Dict as storage
+%% <pre>
 %% {HostUrlKey, PathUrlKey} = lookup_key(Url),
-%% AllowedCookies = orddict:fold(
+%% AllowedCookies = dict:fold(
 %%     fun({HostCookieKey, PathCookieKey, _Name}, C, Acc) ->
 %%        Allow = (lists:prefix(HostCookieKey, HostUrlKey)
 %%                 and lists:prefix(PathCookieKey, PathUrlKey))
@@ -47,22 +51,25 @@
 %%        true -> Acc
 %%        end
 %%     end, [], Cookies).
-%% </code>
-%% or
-%% <s><code>
+%% </pre>
+%% ETS as storage
+%% <s><pre>%FIXME: fix this example
 %% UrlKey = lookup_key(Url),
 %% AllowedCookies = ets:match(Tid, {{UrlKey, '_'}, '$1'}).
-%% </code></s>
+%% </pre></s>
 -spec lookup_key(url()) -> lookup_key().
 lookup_key({_, _, Host, _Port, Path, _}) ->
     %% FIXME: this doesn't work in major amount of cases
     {lists:reverse([$. | Host]), Path}.
 
-%% Cookies should be stored in storage by this key, and it should be unique, eg
-%% <code>dict:store(cookie_key(Cookie), Cookie, Storage)</code>
-%% or
-%% <code>Tid = ets:new(my_cookie_jar, [set]),
-%% ets:insert(Tid, {cookie_key(Cookie), Cookie})</code>
+%% @doc Cookies should be stored in storage by this key, and it should be unique, eg
+%% Dict as storage
+%% <pre>dict:store(cookie_key(Cookie), Cookie, Storage)</pre>
+%% ETS as storage
+%% <pre>
+%% Tid = ets:new(my_cookie_jar, [set]),
+%% ets:insert(Tid, {cookie_key(Cookie), Cookie})
+%% </pre>
 -spec cookie_key(#xhttpc_cookie{}) -> cookie_key().
 cookie_key(Cookie) ->
     #xhttpc_cookie{
@@ -71,7 +78,10 @@ cookie_key(Cookie) ->
             domain = Domain} = Cookie,
     {lists:reverse([$. | Domain]), Path, Name}.
 
-%% Generate "Cookie" header
+%% @doc Generate "Cookie" header
+%% <code>
+%% Headers = cookie_header(ParsedUrl, Cookies) ++ ExistingHeaders.
+%% </code>
 -spec cookie_header(url(), [#xhttpc_cookie{}]) -> [xhttpc:http_header()].
 cookie_header(Url, Cookies) ->
     AllowedCookies = [C || C <- Cookies, send_allowed(Url, C)],

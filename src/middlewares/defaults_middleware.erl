@@ -2,6 +2,7 @@
 %%% @copyright (C) 2013, Sergey Prokhorov
 %%% @doc
 %%% Request defaults middleware.
+%%%
 %%% * Append or merge some constant HTTP headers to request
 %%% * Merge some default options.
 %%% `append_hdrs' - just append some constant headers to request. Don't merged
@@ -10,6 +11,7 @@
 %%% request's headers
 %%% `default_options' - like `default_hdrs', but for options + `client_options'
 %%% are merged by key too.
+%%%
 %%% TODO: allow duplicate header names
 %%% @end
 %%% Created : 20 Jun 2013 by Sergey Prokhorov <me@seriyps.ru>
@@ -22,9 +24,9 @@
 -export([init/1, request/3, response/4, call/2, terminate/2]).
 
 -record(state,
-       {append_hdrs :: [http_header()],
-        default_hdrs :: [http_header()],
-        default_options :: http_options()}).
+       {append_hdrs :: [xhttpc:http_header()],
+        default_hdrs :: [xhttpc:http_header()],
+        default_options :: xhttpc:http_options()}).
 
 init(Options) ->
     State = #state{

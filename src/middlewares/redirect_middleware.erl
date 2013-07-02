@@ -1,8 +1,8 @@
 %%% @author Sergey Prokhorov <me@seriyps.ru>
 %%% @copyright (C) 2012, Sergey Prokhorov
 %%% @doc
-%%% HTTP redirect middleware
-%%% Follow HTTP redirects (301/302/303)
+%%% HTTP redirect middleware.
+%%% Follow HTTP redirects (301/302/303).
 %%% XXX: This middleware MUST be the outermost one, because it can perform
 %%% additional HTTP requests with the same session. So, if you, for example,
 %%% place cookie middleware after redirect middleware, you can loose your

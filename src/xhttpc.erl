@@ -33,22 +33,41 @@
 -export([header_value/2, normalize_headers/1, normalize_header_name/1]).
 
 -export_type([session/0, request/0, response/0]).
+-export_type([http_header/0, http_options/0]).
 
 -include("xhttpc.hrl").
-%% HTTP client's session. Shouldn't be used directly bu users!
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -record(session,
         {mw_args :: [middleware()],    %initial middleware arguments
          mw_order :: [atom()],         %in which order middlewares should be called
          mw_states :: orddict:orddict(), % {atom(), any()} % orddict with middleware states
          http_backend = lhttpc
         }).
+%% HTTP client's session. Shouldn't be used directly by users!
 
 
 -type session() :: #session{}.
 -type request() :: #xhttpc_request{}.
 -type response() :: http_response().
 
-%% http_header() and http_options() defined in xhttpc.hrl
+-type http_header() :: {string(), string()}.
+
+-type http_options() :: [{disable_middlewares, [module()]}
+                         | {timeout, timeout()}
+                         | {client_options, any()}
+                         | {atom(), any()}].
+%% `disable_middlewares' - list of middlewares, that should be skipped for
+%% this particular request.
+%% `timeout' - request timeout. If request  isn't finished during this time,
+%% `{error, timeout}' will be returned. Note: you may use `infinity' as timeout
+%% value.
+%% `client_options' - this options will be passed directly to underlying
+%% HTTP client. Use with caution, only if you know which client you use and
+%% have no plans to change it in the future.
 
 -type middleware() :: {Module :: module(), Args :: [any()]}.
 
@@ -57,8 +76,10 @@
 -type http_post_body() :: iolist().
 
 -type http_resp_body() :: binary() | undefined.
--type http_response() :: {ok, {{pos_integer(), string()}, [http_header()], http_resp_body()}}
-                       | {error, atom()}.
+-type http_response() :: {ok, {{StatusCode :: pos_integer(), StatusString :: string()},
+                               Headers :: [http_header()],
+                               Body :: http_resp_body()}}
+                       | {error, any()}.
 
 
 %% Main API

@@ -3,11 +3,12 @@ xhttpc - eXtensible HTTP(S) Client for Erlang
 
 Easily extensible - just add your own middlewares.
 Simple tiny core - all the additional functionality splitted to middleware modules.
-No additional processes and message passing.
-Not a http client, but http client wrapper: built on top of lhttpc HTTP client,
+No extra processes and message passing.
+Not a http client, but http client wrapper - built on top of lhttpc HTTP client,
 support for other HTTP clients (httpc, hackney etc) can be added easily.
+Batteries included - see below.
 
-Inspired mostly by python's urllib2.
+Inspired mostly by python's [urllib2](http://docs.python.org/2/library/urllib2.html).
 Battle-tested in production system.
 
 API
@@ -57,11 +58,15 @@ If you don't like this `S1, S2, S3...`, you can store sessions in a
 process / gen_server / public ETS or any storage you like, eg:
 
 ```
+% this will spawn new gen_server and store session in it.
 Pid = my_wrapper:init([...]).
+% following calls will lookup / update session from storage using `Pid` as identifier.
 {ok, {{200, StatusLine}, Headers, Body}} = my_wrapper:get(Pid, "http://example.com/").
-my_wrapper:call(Pid, ...).
-my_wrapper:terminate(Pid).
+Result = my_wrapper:call(Pid, ...).
+ok = my_wrapper:terminate(Pid).
 ```
+If you'll create shared storage for sessions (like public ETS table), you can use
+your worker proces's `self()` pid as session ID and don't pass `Pid` parameter at all.
 
 Batteries included
 ------------------
@@ -81,6 +86,9 @@ TODO
   actually supported, but just need to create some wrappers
 * Support for partial download
   eg, for compression middleware
+* More examples:
+  ETS cookie storage
+  API with external session storage (to avoid S1, S2, S3, SN problem)
 
 How to make your own middleware
 -------------------------------
