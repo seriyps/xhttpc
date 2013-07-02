@@ -10,8 +10,8 @@
 
 -module(xhttpc_cookielib).
 
--export([lookup_key/1, cookie_key/1, cookie_header/2, extract_cookies/2, merge_cookies/3]).
--export([send_allowed/2, accept_allowed/2]).
+-export([lookup_key/1, cookie_key/1, cookie_header/2, extract_cookies/2]).
+%% -export([send_allowed/2, accept_allowed/2]).
 
 -include("xhttpc_cookie.hrl").
 
@@ -82,12 +82,10 @@ cookie_header(Url, Cookies) ->
             [{"Cookie", CookieStr}]
     end.
 
+%% @doc Return list of `#xhttpc_cookie{}' records (one for each accepted "Set-Cookie" header)
 -spec extract_cookies(url(), [xhttpc:http_header()]) -> [#xhttpc_cookie{}].
 extract_cookies(Url, Headers) ->
-    parse_set_cookie(Url, Headers, []).
-
-merge_cookies(_OldCookies, _NewCookies, _Now) ->
-    ok.
+    parse_set_cookie(Url, Headers, [], xhttpc:normalize_header_name("set-cookie")).
 
 
 %% internal
@@ -153,9 +151,9 @@ path_match(UrlPath, CookiePath) ->
 
 %% set-cookie header parser
 %% RFC 5.2.
-parse_set_cookie(_, [], Cookies) ->
+parse_set_cookie(_, [], Cookies, _) ->
     Cookies;
-parse_set_cookie(Url, [{"set-cookie", Val} | Headers], Cookies) ->
+parse_set_cookie(Url, [{HdrName, Val} | Headers], Cookies, HdrName) ->
     %% TODO: normalize header name
     SetCookieString = string:tokens(Val, ";"),
     [CookiePair | CookieAv] = SetCookieString,
@@ -169,12 +167,12 @@ parse_set_cookie(Url, [{"set-cookie", Val} | Headers], Cookies) ->
     Cookie2 = set_cookie_defaults(Url, Cookie1), %  (see RFC 5.3)
     case accept_allowed(Url, Cookie2) of
         true ->
-            parse_set_cookie(Url, Headers, [Cookie2 | Cookies]);
+            parse_set_cookie(Url, Headers, [Cookie2 | Cookies], HdrName);
         false ->
-            parse_set_cookie(Url, Headers, Cookies)
+            parse_set_cookie(Url, Headers, Cookies, HdrName)
     end;
-parse_set_cookie(Url, [_H | Headers], Cookies) ->
-    parse_set_cookie(Url, Headers, Cookies).
+parse_set_cookie(Url, [_H | Headers], Cookies, HdrName) ->
+    parse_set_cookie(Url, Headers, Cookies, HdrName).
 
 parse_cookie_av([], Cookie) ->
     Cookie;
@@ -350,16 +348,17 @@ parse_cookie_date_test() ->
 
 parse_set_cookie_test() ->
     Url1 = ?URL("http://example.com/some/path"),
-    H1 = {"set-cookie", "k=v"},
+    CookieHdr = xhttpc:normalize_header_name("set-cookie"),
+    H1 = {CookieHdr, "k=v"},
     C1 = #xhttpc_cookie{name = "k",
                         value = "v",
                         domain = "example.com",
                         hostonly = true,
                         path="/some"},
-    ?assertEqual([C1], parse_set_cookie(Url1, [H1], [])),
+    ?assertEqual([C1], parse_set_cookie(Url1, [H1], [], CookieHdr)),
 
     Url2 = Url1,
-    H2 = {"set-cookie",
+    H2 = {CookieHdr,
           "k=v; Expires=Thu, 09-Oct-2013 17:02:56 GMT; Domain=.example.com; HttpOnly; Secure; Path=/path"},
     C2 = #xhttpc_cookie{
       name = "k", value = "v",
@@ -368,18 +367,19 @@ parse_set_cookie_test() ->
       httponly = true,
       secure = true,
       domain = "example.com"},
-    ?assertEqual([C2], parse_set_cookie(Url2, [H2], [])).
+    ?assertEqual([C2], parse_set_cookie(Url2, [H2], [], CookieHdr)).
 
 parse_set_cookie_with_equals_sign_regression_test() ->
     Url1 = ?URL("http://example.com/"),
-    H1 = {"set-cookie", "k=SGVsbG8gd29ybGQ=; Secure"},
+    CookieHdr = xhttpc:normalize_header_name("set-cookie"),
+    H1 = {CookieHdr, "k=SGVsbG8gd29ybGQ=; Secure"},
     C1 = #xhttpc_cookie{name = "k",
                         value = "SGVsbG8gd29ybGQ=",
                         domain = "example.com",
                         hostonly = true,
                         path = "/",
                         secure = true},
-    ?assertEqual([C1], parse_set_cookie(Url1, [H1], [])).
+    ?assertEqual([C1], parse_set_cookie(Url1, [H1], [], CookieHdr)).
 
 serialize_cookies_test() ->
     Url = ?URL("http://www.example.com/path"),

@@ -129,17 +129,19 @@ request(S, #xhttpc_request{options=Options, headers=Headers} = Request) ->
 
 %% helpers
 
+%% @doc Returns value of first occurrence of the header, named `Name'.
 -spec header_value(string(), [http_header()]) -> string() | undefined.
 header_value(Name, Headers) ->
-    lhttpc_lib:header_value(Name, Headers).
+    CanonicalName = normalize_header_name(Name),
+    proplists:get_value(CanonicalName, Headers).
 
-%% @doc Prepare headers for comparision, so "user-agent" and "User-Agent" can be
+%% @doc Prepare headers for comparison, so "user-agent" and "User-Agent" can be
 %% compared as equal after normalization
 -spec normalize_headers([http_header()]) -> [http_header()].
 normalize_headers(Headers) ->
     [{normalize_header_name(Name), Value} || {Name, Value} <- Headers].
 
-%% @doc Prepare header name for comparision (see `normalize_headers')
+%% @doc Prepare header name for comparison (see {@link normalize_headers/1})
 %% If your middleware adds new headers, you SHOULD call this function with
 %% header name like:
 %% <code>NewHeaders = [{normalize_header_name("user-agent"), "xhttpc"}] ++ Headers.</code>
@@ -147,8 +149,10 @@ normalize_headers(Headers) ->
 %% <code>-define(NH(Name), xhttpc:normalize_header_name(Name)).</code>
 -spec normalize_header_name(string()) -> string().
 normalize_header_name(Name) ->
-    %% TODO: maybe capitalize instead of to_lower?
-    string:to_lower(Name).
+    %% in general, we can safely use string:to_lower/1 for that
+    %% string:to_lower(Name).
+    %% string:to_upper(Name).
+    capitalize_token(Name).
 
 
 %%
@@ -160,8 +164,23 @@ normalize_response({ok, {Status, Headers, Body}}) ->
 normalize_response(Other) ->
     Other.
 
+
+capitalize_token(Str) ->
+    %% Idea borrowed from cowboy_bstr:capitalize_token/1
+    capitalize_token(Str, true).
+
+capitalize_token([$- | Rest], _) ->
+    [$- | capitalize_token(Rest, true)];
+capitalize_token([Chr | Rest], true) ->
+    [string:to_upper(Chr) | capitalize_token(Rest, false)];
+capitalize_token([Chr | Rest], false) ->
+    [string:to_lower(Chr) | capitalize_token(Rest, false)];
+capitalize_token([], _) ->
+    [].
+
+
 %% In case we need possibility to add custom HTTP backends in a flexible way,
-%% we can rewrite xhttpc such that just define `tun_request' functions in
+%% we can rewrite xhttpc such that just define `run_request' functions in
 %% separate adapter modules, like `xhttpc_lhttpc', `xhttpc_test_client',
 %% `xhttpc_httpc' etc and call them from
 %% request/2 like HttpBackend:run_request(...).
@@ -227,3 +246,11 @@ apply_response_middlewares1(#session{mw_states=States} = S, Request, Response, [
 update_middleware_state(Mod, Session, State) ->
     NewStates = orddict:store(Mod, State, Session#session.mw_states),
     Session#session{mw_states = NewStates}.
+
+-ifdef(TEST).
+capitalize_test_() ->
+    [?_assertEqual("Test-Header", capitalize_token("test-header")),
+     ?_assertEqual("Test-Header", capitalize_token("TEST-HEADER")),
+     ?_assertEqual("Test--Header", capitalize_token("test--header"))
+    ].
+-endif.

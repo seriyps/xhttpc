@@ -105,17 +105,18 @@ merge_client_options(COpts, DCOpts) ->
 -ifdef(TEST).
 
 -include_lib("eunit/include/eunit.hrl").
+-define(NH(Hdrs), xhttpc:normalize_headers(Hdrs)).
 
 merge_headers_test() ->
-    Hdrs = [{"A", "1"}, {"B", "2"}],
-    DHdrs = [{"b", "3"}, {"c", "4"}],
-    ?assertEqual([{"a", "1"}, {"b", "2"}, {"c", "4"}], merge_headers(Hdrs, DHdrs)).
+    Hdrs = ?NH([{"A", "1"}, {"B", "2"}]),
+    DHdrs = ?NH([{"b", "3"}, {"c", "4"}]),
+    ?assertEqual(?NH([{"a", "1"}, {"b", "2"}, {"c", "4"}]), merge_headers(Hdrs, DHdrs)).
 
 merge_headers_nodef_test() ->
-    ?assertEqual([{"a", "1"}], merge_headers([{"a", "1"}], [])).
+    ?assertEqual(?NH([{"a", "1"}]), merge_headers(?NH([{"a", "1"}]), [])).
 
 merge_headers_nohdrs_test() ->
-    ?assertEqual([{"a", "1"}], merge_headers([], [{"a", "1"}])).
+    ?assertEqual(?NH([{"a", "1"}]), merge_headers([], ?NH([{"a", "1"}]))).
 
 
 merge_options_zero_test() ->
