@@ -5,7 +5,7 @@ Easily extensible - just add your own middlewares.
 Simple tiny core - all the additional functionality splitted to middleware modules.
 No extra processes and message passing.
 Not a http client, but http client wrapper - built on top of lhttpc HTTP client,
-support for other HTTP clients (httpc, hackney etc) can be added easily.
+support for other HTTP clients (httpc, hackney, ibrowse etc) can be added easily.
 Batteries included - see below.
 
 Inspired mostly by python's [urllib2](http://docs.python.org/2/library/urllib2.html).
@@ -33,8 +33,11 @@ Session = xhttpc:init(
 {S3, {ok, {{200, StatusLine}, Headers, Body}}} =
     xhttpc:request(S2, #request{url="http://example.com/"}),
 
+%% Interact with middleware's state
+{S4, Cookies} = xhttpc:call(S3, cookie_middleware, {get_cookies, "example.com", "/"}).
+
 %% Terminate session
-ok = xhttpc:terminate(S3).
+ok = xhttpc:terminate(S4).
 ```
 
 Api sequence diagram:
@@ -51,13 +54,22 @@ xhttpc:(init|terminate)    --> | init|terminate |     |               |     |   
                            \---:----------------:---> | init|terminate|     |                  |
 ```
 
-If you think API is too verbose or you don't like records, just make
-your own wrappers / shortcuts.
+Try `rebar doc` to generate HTML API documentation from sources.
 
-If you don't like this `S1, S2, S3...`, you can store sessions in a
-process / gen_server / public ETS or any storage you like, eg:
+FAQ
+---
 
-```
+Q: I think API is too verbose / I don't like records in API.
+
+A: Just make your own wrappers / shortcuts.
+
+
+Q: I don't like this session-chains `S1, S2, S3...`.
+
+A: You can store sessions in a process / gen_server / public ETS or any storage
+you like, eg:
+
+```erlang
 % this will spawn new gen_server and store session in it.
 Pid = my_wrapper:init([...]).
 % following calls will lookup / update session from storage using `Pid` as identifier.
@@ -65,7 +77,7 @@ Pid = my_wrapper:init([...]).
 Result = my_wrapper:call(Pid, ...).
 ok = my_wrapper:terminate(Pid).
 ```
-If you'll create shared storage for sessions (like public ETS table), you can use
+If you'll create shared storage for sessions (like public ETS table), you can also use
 your worker proces's `self()` pid as session ID and don't pass `Pid` parameter at all.
 
 Batteries included
@@ -77,7 +89,6 @@ Batteries included
 * Automatic http referer (referer_middleware)
 * Constant default / additional headers and options for each request (defaults_middleware)
 * TODO: basic HTTP auth middleware
-* TODO: history middleware
 
 TODO
 ----
@@ -117,7 +128,7 @@ So, first we add standard module header:
 -record(state, {session_id, timer_start, n_requests=0}).  % middleware's internal state
 ```
 
-Now, let's implement other functions:
+Now, let's implement some callback functions:
 
 ```erlang
 init([SessionID]) ->
@@ -136,7 +147,7 @@ request(Session, Request, #state{n_requests=NReqs} = State) ->
 ```
 Now, when user call `xhttpc:request/2,6`, request first goes to each middlewares `request/3`
 callback. We only capture current timestamp before request been executed
-(sended to the server) and increment requests count.
+(sended to the server) and increment requests counter.
 
 ```erlang
 response(Session, #xhttpc_request{url=Url, method=Method}, Response,
@@ -154,14 +165,14 @@ response(Session, #xhttpc_request{url=Url, method=Method}, Response,
     noaction.
 ```
 After request has been executed and response been returned by underlying HTTP client,
-middleware's `response/4` will be called. We calculate request's runtime as diff
+middleware's `response/4` will be called (in reverse order). We calculate request's runtime as diff
 of saved in `State` request-start-time and current timestamp. Next, if response
 was successful - extract HTTP response code, if not - error reason. And finally,
 log all the data to `error_logger`. Note, that we return atom `noaction` as a flag
 that Session, State and Response hasn't been modified by this callback.
 
 ```erlang
-terminate(Reason, #session{session_id=SID}) ->
+terminate(Reason, #state{session_id=SID}) ->
     error_logger:info_msg("Session ~p has been terminated with reason ~p", [SID, Reason]),
     ok.
 ```
@@ -176,12 +187,12 @@ user-friendly API method for it:
 -export([get_requests_count/1]).
 
 get_requests_count(Session) ->
-    xhttpc:call(Session, ?MODULE, {get_requests_count}).
+    xhttpc:call(Session, ?MODULE, get_requests_count).
 ```
 This is just a wrapper around `xhttpc:call/3`. Next, we implement a callback
 
 ```erlang
-call({get_requests_count}, #state{n_requests=NReqs} = State) ->
+call(get_requests_count, #state{n_requests=NReqs} = State) ->
     {NReqs, State}.
 ```
 
