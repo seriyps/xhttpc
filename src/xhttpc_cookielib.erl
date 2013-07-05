@@ -336,6 +336,7 @@ send_allowed_test() ->
     ?assert(send_allowed(Url2, #xhttpc_cookie{domain = "www.example.com", path = "/"})),
     ?assert(not send_allowed(Url2, #xhttpc_cookie{domain = "www2.example.com", path = "/"})),
     ?assert(not send_allowed(Url2, #xhttpc_cookie{domain = "wwwexample.com", path = "/"})),
+    ?assert(not send_allowed(Url2, #xhttpc_cookie{domain = "ample.com", path = "/"})),
 
     ?assert(send_allowed(Url2, #xhttpc_cookie{domain = "www.example.com",
                                               path = "/",
@@ -350,7 +351,11 @@ send_allowed_test() ->
     ?assert(send_allowed(Url3, #xhttpc_cookie{domain = "example.com", path = "/dir/path"})),
     ?assert(not send_allowed(Url3, #xhttpc_cookie{domain = "example.com", path = "/dir/path/sub"})),
     %% ?assert(not send_allowed(Url3, #xhttpc_cookie{domain = "example.com", path = "/dir/pat"})), %FIXME:
-    ?assert(not send_allowed(Url3, #xhttpc_cookie{domain = "example.com", path = "/notdir"})).
+    ?assert(not send_allowed(Url3, #xhttpc_cookie{domain = "example.com", path = "/notdir"})),
+
+    Url4 = ?URL("https://www.example.com/"),
+    ?assert(send_allowed(Url4, #xhttpc_cookie{domain = "www.example.com", path = "/"})),
+    ?assert(send_allowed(Url4, #xhttpc_cookie{domain = "www.example.com", path = "/", secure=true})).
 
 parse_cookie_date_test() ->
     ?assertEqual({{2013, 10, 9}, {17, 2, 56}},
