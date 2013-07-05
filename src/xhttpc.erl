@@ -111,7 +111,7 @@ terminate(Session, Reason) ->
     ok.
 
 %% @doc Call middleware (call `call/2' of middleware `Mod')
--spec call(session(), module(), [any()]) -> {session(), any()}.
+-spec call(session(), module(), any()) -> {session(), any()}.
 call(#session{mw_states=States} = Session, Mod, Args) ->
     State = orddict:fetch(Mod, States),
     {Response, NewState} = Mod:call(Args,  State),

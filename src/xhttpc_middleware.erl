@@ -25,7 +25,7 @@
              Response :: xhttpc:response(),
              State :: any().
 
--callback call([Params], State) ->
+-callback call(Params, State) ->
     {Response, State}       % XXX: revise response API - need noaction for state
         when Params :: any(),
              State :: any(),
