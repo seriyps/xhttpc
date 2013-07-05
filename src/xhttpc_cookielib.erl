@@ -138,9 +138,11 @@ domain_match(Domain, Domain) ->
 domain_match(Domain, String) ->
     %% eg String "www.example.com" matches Domain "example.com"
     %% but "wwwexample.com" not matches "example.com"
-    RString = lists:reverse(String),
-    RDotDomain = lists:reverse([$. | Domain]),
-    lists:prefix(RDotDomain, RString).
+    %% RString = lists:reverse(String),
+    %% RDotDomain = lists:reverse([$. | Domain]),
+    %% lists:prefix(RDotDomain, RString).
+    DotDomain = [$. | Domain],
+    lists:suffix(DotDomain, String).
 
 %% RFC 5.3 / 5
 %% XXX: this is the simplest test! Full public list is there [http://publicsuffix.org/]
