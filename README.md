@@ -84,7 +84,7 @@ Batteries included
 ------------------
 
 * Traffic compression (compression_middleware)
-* Redirects (redirect_middleware)
+* Redirects, with loop detection (redirect_middleware)
 * Cookies (cookie_middleware + RFC6265 cookie parser / serializer)
 * Automatic http referer (referer_middleware)
 * Constant default / additional headers and options for each request (defaults_middleware)

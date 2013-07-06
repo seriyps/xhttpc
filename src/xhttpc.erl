@@ -30,7 +30,7 @@
 
 -export([init/1, init/2, terminate/2, call/3]).
 -export([request/6, request/2]).
--export([header_value/2, normalize_headers/1, normalize_header_name/1]).
+-export([header_value/2, normalize_headers/1, normalize_header_name/1, session_param/2]).
 
 -export_type([session/0, request/0, response/0]).
 -export_type([http_header/0, http_options/0]).
@@ -45,6 +45,7 @@
         {mw_args :: [middleware()],    %initial middleware arguments
          mw_order :: [atom()],         %in which order middlewares should be called
          mw_states :: orddict:orddict(), % {atom(), any()} % orddict with middleware states
+         depth = 0 :: non_neg_integer(), % for nested requests (like request from redirect_middleware)
          http_backend = lhttpc
         }).
 %% HTTP client's session. Shouldn't be used directly by users!
@@ -131,21 +132,23 @@ request(S, Url, Method, Headers, Body, Options) ->
 
 %% @doc Perform HTTP request (record API)
 -spec request(session(), request()) -> {session(), http_response()}.
-request(S, #xhttpc_request{options=Options, headers=Headers} = Request) ->
-    MWOrder = enabled_middlewares(
-                S#session.mw_order,
-                proplists:get_value(disable_middlewares, Options)),
+request(#session{mw_order=MWOrder, depth=Depth} = S,
+        #xhttpc_request{options=Options, headers=Headers} = Request) ->
+    MWOrder1 = enabled_middlewares(
+                 MWOrder,
+                 proplists:get_value(disable_middlewares, Options)),
+    S0 = S#session{depth = Depth + 1},      % see referer_middleware for reason
     Request1 = Request#xhttpc_request{headers=normalize_headers(Headers)},
     %% Apply pre-request middlewares
-    {S1, Request2} = apply_request_middlewares(S, Request1, MWOrder),
-    %% io:format("ROpts ~p, Middlewares ~p~n", [SOpts, MWOrder]),
+    {S1, Request2} = apply_request_middlewares(S0, Request1, MWOrder1),
 
     Resp = run_request(Request2, S#session.http_backend),
     Resp1 = normalize_response(Resp),
 
     %% Apply post-request middlewares
-    {S2, Resp2} = apply_response_middlewares(S1, Request2, Resp1, MWOrder),
-    {S2, Resp2}.
+    {S2, Resp2} = apply_response_middlewares(S1, Request2, Resp1, MWOrder1),
+    S3 = S2#session{depth = S2#session.depth - 1},
+    {S3, Resp2}.
 
 
 %% helpers
@@ -170,11 +173,14 @@ normalize_headers(Headers) ->
 %% <code>-define(NH(Name), xhttpc:normalize_header_name(Name)).</code>
 -spec normalize_header_name(string()) -> string().
 normalize_header_name(Name) ->
-    %% in general, we can safely use string:to_lower/1 for that
     %% string:to_lower(Name).
     %% string:to_upper(Name).
     capitalize_token(Name).
 
+%% @doc Return some session's params. Currently only `depth' supported.
+-spec session_param(session(), atom()) -> any().
+session_param(#session{depth=Depth}, depth) ->
+    Depth.
 
 %%
 %% Internal

@@ -5,7 +5,7 @@
 %%% @end
 %%% Created : 28 Jun 2013 by Sergey Prokhorov <me@seriyps.ru>
 
--module(reedirect_middleware_tests).
+-module(redirect_middleware_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("xhttpc.hrl").
@@ -14,7 +14,7 @@
 redirect_303_test() ->
     %% 303 should redirect using GET request
     Se = xhttpc:init([], test_client),
-    St = redirect_middleware:init([]),
+    {ok, St} = redirect_middleware:init([]),
     Opts = [{client_options, [{response, fun term2bin_response/1}]}],
     Req = #xhttpc_request{
       url = "http://example.com/",
@@ -45,7 +45,7 @@ redirect_301_302_test_() ->
 
 redirect_301_302(Code) ->
     Se = xhttpc:init([], test_client),
-    St = redirect_middleware:init([]),
+    {ok, St} = redirect_middleware:init([]),
     Opts = [{client_options, [{response, fun term2bin_response/1}]}],
     RedirUrl = "http://example.com/redir",
     Req = #xhttpc_request{
@@ -62,3 +62,15 @@ redirect_301_302(Code) ->
     NewReq = binary_to_term(BinBody),
     WaitReq = Req#xhttpc_request{url=RedirUrl},
     ?assertEqual(WaitReq, NewReq).
+
+infinite_redirect_test() ->
+    S = xhttpc:init([{redirect_middleware, [{max_depth, 2}]}], test_client),
+    Response = {ok, {{301, "moved blabla"},
+                 ?NH([{"location", "http://example.com/"}]),
+                 <<"moved">>}},
+    ?assertError(
+       {max_redirect_depth_exceeded, 3, 2},
+       xhttpc:request(
+         S, #xhttpc_request{url="http://example.com/",
+                            options=[{client_options,
+                                      [{response, Response}]}]})).
