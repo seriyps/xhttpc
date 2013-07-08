@@ -15,6 +15,12 @@ API
 ---
 
 ```erlang
+%% Start underlying HTTP client library
+% if you use OTP's httpc
+inets:start().
+% if you use lhttpc (recommended)
+[application:start(App) || App <- [crypto, public_key, ssl, lhttpc]].
+
 %% Initialize session
 Session = xhttpc:init(
     [{compression_middleware, []},
@@ -100,6 +106,10 @@ TODO
 * More examples:
   ETS cookie storage
   API with external session storage (to avoid S1, S2, S3, SN problem)
+* More http client  adapters:
+  * DONE httpc
+  * hackney
+  * ibrowse
 
 How to make your own middleware
 -------------------------------

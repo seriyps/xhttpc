@@ -217,6 +217,27 @@ run_request(#xhttpc_request{url=Url, method=Method, headers=Headers,
     Timeout = proplists:get_value(timeout, Options, infinity),
     ClientOptions = proplists:get_value(client_options, Options, []),
     lhttpc:request(Url, Method, Headers, Body, Timeout, ClientOptions);
+run_request(#xhttpc_request{url=Url, method=Method, headers=Headers,
+                           body=Body, options=Options}, httpc) ->
+    Timeout = proplists:get_value(timeout, Options, infinity),
+    ClientOptions = proplists:get_value(client_options, Options, []),
+    % Don't pass Options for now (4-nd param).
+    % Maybe add foldl + ordsets to split options to HTTPOptions and Options next
+    % time.
+    HttpOptions = [{autoredirect, false},
+                   {timeout, Timeout} | ClientOptions],
+    Options1 = [{body_format, binary}],
+    Request = case Body of
+                  No when (No == []) or (No == undefined) ->
+                      {Url, Headers};
+                  _ ->
+                      {Url, Headers, "", Body}
+              end,
+    case httpc:request(Method, Request, HttpOptions, Options1) of
+        {ok, {{_, RCode, RStatus}, RHeaders, RBody}} ->
+            {ok, {{RCode, RStatus}, RHeaders, RBody}};
+        Error -> Error
+    end;
 run_request(#xhttpc_request{options=Options} = Request, test_client) ->
     %% test (fake) HTTP client. Returns value of 'respoonse' client option
     %% as response (if defined), else return dummy 200 response.
