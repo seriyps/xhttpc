@@ -39,13 +39,13 @@ redirect(_, undefined, _, _, _, _) ->
     noaction;
 redirect(_, _, {Depth, MaxDepth}, _, _, _) when Depth > MaxDepth ->
     erlang:error({max_redirect_depth_exceeded, Depth, MaxDepth});
-redirect(303, Url, _, #xhttpc_request{options=Options, headers=Hdrs}, Session, State) ->
-    NewRequest = #xhttpc_request{url=Url, method=get, headers=Hdrs, options=Options},
+redirect(303, Url, _, #xhttpc_request{options=Options}, Session, State) ->
+    NewRequest = #xhttpc_request{url=Url, method=get, options=Options},
     {NewSession, NewResp} = xhttpc:request(Session, NewRequest),
     {update, NewSession, NewResp, State};
 redirect(Code, Url, _, Req, Session, State)
   when Code == 301; Code == 302 ->
-    NewRequest = Req#xhttpc_request{url=Url},
+    NewRequest = Req#xhttpc_request{url=Url, headers=[]},
     {NewSession, NewResp} = xhttpc:request(Session, NewRequest),
     {update, NewSession, NewResp, State}.
 
