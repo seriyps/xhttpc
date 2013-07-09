@@ -263,12 +263,15 @@ default_path(_) ->
 
 %%
 %% RFC http://tools.ietf.org/html/rfc2616#section-3.3.1
-%% implemented only RFC1123 date, eg "Thu, 10-Oct-2013 17:02:56 GMT"
+%% RFC1123 / RFC2616 date eg:
+%% "Thu, 10-Oct-2013 17:02:56 GMT"
+%% or
+%% "Thu, 10 Oct 2013 17:02:56 GMT"
 %% XXX: maybe regexp?
 %%
 parse_cookie_date([_D, _A, _Y, $,, $ ,
-                   D1, D2, $-, M1, M2, M3, $-, Y1, Y2, Y3, Y4, $ ,
-                   H1, H2, $:, Mi1, Mi2, $:, S1, S2 | _Gmt]) ->
+                   D1, D2, DtSep, M1, M2, M3, DtSep, Y1, Y2, Y3, Y4, $ ,
+                   H1, H2, $:, Mi1, Mi2, $:, S1, S2 | _Gmt]) when (DtSep == $ ) orelse (DtSep == $-) ->
     Year  = list_to_integer([Y1,Y2,Y3,Y4]),
     Day   = list_to_integer([D1,D2]),
     Month = convert_month([M1,M2,M3]),
