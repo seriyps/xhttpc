@@ -216,7 +216,8 @@ run_request(#xhttpc_request{url=Url, method=Method, headers=Headers,
                             body=Body, options=Options}, lhttpc) ->
     Timeout = proplists:get_value(timeout, Options, infinity),
     ClientOptions = proplists:get_value(client_options, Options, []),
-    lhttpc:request(Url, Method, Headers, Body, Timeout, ClientOptions);
+    RealBody = case Body of undefined -> []; _ -> Body end,
+    lhttpc:request(Url, Method, Headers, RealBody, Timeout, ClientOptions);
 run_request(#xhttpc_request{url=Url, method=Method, headers=Headers,
                            body=Body, options=Options}, httpc) ->
     Timeout = proplists:get_value(timeout, Options, infinity),
