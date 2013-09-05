@@ -25,8 +25,8 @@ inets:start().
 Session = xhttpc:init(
     [{compression_middleware, []},
      {cookie_middleware, []},
-     {defaults_middleware, [{append_hdrs, {"User-Agent", "xhttpc 0.0.1"}},
-                            {default_options, {timeout, 10}}]}]),
+     {defaults_middleware, [{append_hdrs, [{"User-Agent", "xhttpc 0.0.1"}]},
+                            {default_options, [{timeout, 10}]}]}]),
 
 %% Perform HTTP request, using positional arguments
 {S2, {ok, {{200, StatusLine}, Headers, Body}}} =
