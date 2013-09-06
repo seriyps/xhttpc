@@ -86,19 +86,22 @@
 %% Main API
 
 %% @doc Initialize middlewares (call each middleware's `init/1' and collect states)
--spec init(middleware()) -> session().
+-spec init([middleware() | atom()]) -> session().
 init(Middlewares) ->
     init(Middlewares, lhttpc).
 
 %% @doc Like {@link init/1}, but allow to specify http backend (hardcoded for now)
 init(Middlewares, HttpBackend) ->
+    Middlewares1 = lists:map(fun({_, _}=NameArg) -> NameArg;
+                                (Name) when is_atom(Name) -> {Name, []}
+                             end, Middlewares),
     InitFun = fun({Mod, Args}) ->
                       {ok, State} = Mod:init(Args),
                       {Mod, State}
               end,
-    States = orddict:from_list(lists:map(InitFun, Middlewares)),
-    #session{mw_args=Middlewares,
-             mw_order=[Mod || {Mod, _} <- Middlewares],
+    States = orddict:from_list(lists:map(InitFun, Middlewares1)),
+    #session{mw_args=Middlewares1,
+             mw_order=[Mod || {Mod, _} <- Middlewares1],
              mw_states=States,
              http_backend=HttpBackend}.
 

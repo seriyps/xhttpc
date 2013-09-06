@@ -21,10 +21,10 @@ inets:start().
 % if you use lhttpc (recommended)
 [application:start(App) || App <- [crypto, public_key, ssl, lhttpc]].
 
-%% Initialize session
+%% Initialize session (passing list of middleware names or pairs {middleware_name, init_args})
 Session = xhttpc:init(
-    [{compression_middleware, []},
-     {cookie_middleware, []},
+    [compression_middleware,
+     cookie_middleware,
      {defaults_middleware, [{append_hdrs, [{"User-Agent", "xhttpc 0.0.1"}]},
                             {default_options, [{timeout, 10}]}]}]),
 
