@@ -74,3 +74,29 @@ infinite_redirect_test() ->
          S, #xhttpc_request{url="http://example.com/",
                             options=[{client_options,
                                       [{response, Response}]}]})).
+
+
+relative_redirect_test_() ->
+    [fun() -> relative_redirect_test_code(301) end,
+     fun() -> relative_redirect_test_code(302) end,
+     fun() -> relative_redirect_test_code(303) end].
+
+relative_redirect_test_code(Code) ->
+    Se = xhttpc:init([], test_client),
+    {ok, St} = redirect_middleware:init([]),
+    Opts = [{client_options, [{response, fun term2bin_response/1}]}],
+    RedirUrl = "success?a=b",
+    Req = #xhttpc_request{
+      url = "http://example.com/somepath/form",
+      headers = ?NH([{"hdr1", "val1"}]),
+      method = post,
+      body = <<"post-body">>,
+      options = Opts},
+    Resp = {ok, {{Code, "moved blabla"},
+                 ?NH([{"location", RedirUrl}]),
+                 <<"moved">>}},
+    {update, _Se1, {ok, {{200, _}, _, BinBody}}, _St1} =
+        redirect_middleware:response(Se, Req, Resp, St),
+    NewReq = binary_to_term(BinBody),
+    ?assertEqual("http://example.com/somepath/success?a=b",
+                 NewReq#xhttpc_request.url).
