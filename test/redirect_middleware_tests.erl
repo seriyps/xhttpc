@@ -29,13 +29,13 @@ redirect_303_test() ->
         redirect_middleware:response(Se, Req, Resp, St),
     #xhttpc_request{url = Url,
                     method = Method,
-                    headers = Hdrs,
+                    %% headers = Hdrs,
                     options = ResOpts,
                     body = Body} = binary_to_term(BinBody),
     ?assertEqual("http://example.com/redir", Url),
     ?assertEqual(get, Method),
     ?assertEqual(undefined, Body),
-    ?assertEqual(?NH([{"hdr1", "val1"}]), Hdrs),
+    %% ?assertEqual(?NH([{"hdr1", "val1"}]), Hdrs),  %% Headers are dropped, because of possible duplicates
     ?assertEqual(Opts, ResOpts).
 
 redirect_301_302_test_() ->
@@ -60,7 +60,7 @@ redirect_301_302(Code) ->
     {update, _Se1, {ok, {{200, _}, _, BinBody}}, _St1} =
         redirect_middleware:response(Se, Req, Resp, St),
     NewReq = binary_to_term(BinBody),
-    WaitReq = Req#xhttpc_request{url=RedirUrl},
+    WaitReq = Req#xhttpc_request{url=RedirUrl, headers=[]},  %% Headers are dropped, because of possible duplicates
     ?assertEqual(WaitReq, NewReq).
 
 infinite_redirect_test() ->
