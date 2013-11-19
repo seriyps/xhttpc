@@ -15,6 +15,7 @@
 -behaviour(xhttpc_middleware).
 
 -export([init/1, request/3, response/4, call/2, terminate/2]).
+-export([absolute_url/2]).
 
 -include("xhttpc.hrl").
 
@@ -88,9 +89,15 @@ absolute_url(("//" ++ _) = Url, CurrentUrl) ->
         http ->
             "http:" ++ Url
     end;
+absolute_url(("./" ++ RestPath), CurrentUrl) ->
+    absolute_url(RestPath, CurrentUrl);
 absolute_url(("/" ++ _) = AbsPath, CurrentUrl) ->
     {ok, {Scheme, UserInfo, Host, Port, _Path, _Query}} = http_uri:parse(CurrentUrl),
     format_url({Scheme, UserInfo, Host, Port, AbsPath, ""});
+absolute_url(("../" ++ RestPath), CurrentUrl) -> % ../../index.html
+    {ok, {Scheme, UserInfo, Host, Port, Path, _Query}} = http_uri:parse(CurrentUrl),
+    NewCurrentPath = filename:dirname(Path),
+    absolute_url(RestPath, format_url({Scheme, UserInfo, Host, Port, NewCurrentPath, ""}));
 absolute_url(RelPath, CurrentUrl) ->
     %% Rel path is "action.html" or "?key=value&..." or
     %% "action.html?key=value&..." or ""
@@ -153,6 +160,11 @@ absolute_url_test() ->
     ?assertEqual(Sample, absolute_url("http://example.com/dir/path?k=v", "any")),
     ?assertEqual(Sample, absolute_url("//example.com/dir/path?k=v", "http://www.example.com/other/")),
     ?assertEqual(Sample, absolute_url("/dir/path?k=v", "http://example.com/other/path")),
+    ?assertEqual(Sample, absolute_url("./path?k=v", "http://example.com/dir/form?c=d")),
+    ?assertEqual(Sample, absolute_url("../path?k=v", "http://example.com/dir/subdir/")),
+    ?assertEqual(Sample, absolute_url("../path?k=v", "http://example.com/dir/subdir/form?c=d")),
+    ?assertEqual(Sample, absolute_url("../../path?k=v", "http://example.com/dir/subdir1/subdir2/form?c=d")),
+    ?assertEqual(Sample, absolute_url("../../dir/path?k=v", "http://example.com/form?c=d")),
     ?assertEqual(Sample, absolute_url("path?k=v", "http://example.com/dir/")),
     ?assertEqual(Sample, absolute_url("path?k=v", "http://example.com/dir/form?c=d")),
     ?assertEqual("http://user:passwd@example.com:8080/dir/path?k=v",
