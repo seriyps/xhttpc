@@ -39,11 +39,19 @@ Session = xhttpc:init(
 {S3, {ok, {{200, StatusLine}, Headers, Body}}} =
     xhttpc:request(S2, #request{url="http://example.com/"}),
 
+%% Perform HTTP request, using proplists API
+{S4, {ok, {{200, StatusLine}, Headers, Body}}} =
+    xhttpc:request(S3,
+                   "http://example.com/",
+                   [{method, post},
+                    {body, "a=b"},
+                    {headers, [{"Content-Type", "application/x-www-form-urlencoded"}]}]),
+
 %% Interact with middleware's state
-{S4, Cookies} = xhttpc:call(S3, cookie_middleware, {get_cookies, "example.com", "/"}).
+{S5, Cookies} = xhttpc:call(S4, cookie_middleware, {get_cookies, "example.com", "/"}).
 
 %% Terminate session
-ok = xhttpc:terminate(S4).
+ok = xhttpc:terminate(S5).
 ```
 
 Api sequence diagram:

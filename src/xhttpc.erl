@@ -29,7 +29,7 @@
 -module(xhttpc).
 
 -export([init/1, init/2, terminate/2, call/3]).
--export([request/6, request/2]).
+-export([request/6, request/3, request/2]).
 -export([header_value/2, normalize_headers/1, normalize_header_name/1, session_param/2]).
 
 -export_type([session/0, request/0, response/0]).
@@ -132,6 +132,20 @@ request(S, Url, Method, Headers, Body, Options) ->
                                headers = Headers,
                                body = Body,
                                options = Options}).
+
+%% @doc Perform HTTP request (proplists API)
+-spec request(session(), string(), Params) -> {session(), http_response()}
+                                                  when
+      Params :: [{method, http_method()}
+                 | {headers, [http_header()]}
+                 | {body, http_post_body()}
+                 | {options, http_options()}].
+request(S, Url, Params) ->
+    request(S, #xhttpc_request{url = Url,
+                               method = proplists:get_value(method, Params, get),
+                               headers = proplists:get_value(headers, Params, []),
+                               body = proplists:get_value(body, Params, []),
+                               options = proplists:get_value(options, Params, [])}).
 
 %% @doc Perform HTTP request (record API)
 -spec request(session(), request()) -> {session(), http_response()}.
