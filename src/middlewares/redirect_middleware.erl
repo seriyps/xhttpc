@@ -98,6 +98,8 @@ absolute_url(("../" ++ RestPath), CurrentUrl) -> % ../../index.html
     {ok, {Scheme, UserInfo, Host, Port, Path, _Query}} = http_uri:parse(CurrentUrl),
     NewCurrentPath = filename:dirname(Path),
     absolute_url(RestPath, format_url({Scheme, UserInfo, Host, Port, NewCurrentPath, ""}));
+absolute_url("", CurrentUrl) ->
+    CurrentUrl;
 absolute_url(RelPath, CurrentUrl) ->
     %% Rel path is "action.html" or "?key=value&..." or
     %% "action.html?key=value&..." or ""
@@ -169,6 +171,7 @@ absolute_url_test() ->
     ?assertEqual(Sample, absolute_url("path?k=v", "http://example.com/dir/form?c=d")),
     ?assertEqual("http://user:passwd@example.com:8080/dir/path?k=v",
                  absolute_url("path?k=v", "http://user:passwd@example.com:8080/dir/form?c=d")),
+    ?assertEqual(Sample, absolute_url("", "http://example.com/dir/path?k=v")),
     %% https
     ?assertEqual("https://example.com/dir/path?k=v",
                  absolute_url("//example.com/dir/path?k=v", "https://www.example.com/other/")),
