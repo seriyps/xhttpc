@@ -22,9 +22,10 @@ request(Session, #xhttpc_request{headers=Headers} = Request, State) ->
     NewHdrs = lists:keystore(HName, 1, Headers, Hdr),
     {update, Session, Request#xhttpc_request{headers=NewHdrs}, State}.
 
-response(Session, _Req, {ok, {Status, Hdrs, Body}}, State) ->
-    case xhttpc:header_value("content-encoding", Hdrs) of
-        "gzip" ->
+response(Session, _Req, {ok, {Status, Hdrs, Body}}, State)
+  when is_binary(Body) andalso (size(Body) > 10) ->
+    case {xhttpc:header_value("content-encoding", Hdrs), Body} of
+        {"gzip", <<31, 139, 8, _/binary>>} ->
             NewBody = zlib:gunzip(Body),
             {update, Session, {ok, {Status, Hdrs, NewBody}}, State};
         _ ->
