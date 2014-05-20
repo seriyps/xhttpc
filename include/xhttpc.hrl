@@ -3,6 +3,6 @@
         {url :: string(),
          method = get :: get | post | head,
          headers = [] :: [xhttpc:http_header()],
-         body :: iolist(),
+         body :: iodata(),
          options = [] :: xhttpc:http_options()
         }).
