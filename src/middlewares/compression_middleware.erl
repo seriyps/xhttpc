@@ -18,7 +18,7 @@ init([]) -> {ok, []}.
 
 request(Session, #xhttpc_request{headers=Headers} = Request, State) ->
     HName = xhttpc:normalize_header_name("Accept-Encoding"),
-    Hdr = {HName, "gzip"},
+    Hdr = {HName, "gzip,deflate"},
     NewHdrs = lists:keystore(HName, 1, Headers, Hdr),
     {update, Session, Request#xhttpc_request{headers=NewHdrs}, State}.
 
@@ -27,6 +27,9 @@ response(Session, _Req, {ok, {Status, Hdrs, Body}}, State)
     case {xhttpc:header_value("content-encoding", Hdrs), Body} of
         {"gzip", <<31, 139, 8, _/binary>>} ->
             NewBody = zlib:gunzip(Body),
+            {update, Session, {ok, {Status, Hdrs, NewBody}}, State};
+        {"deflate", _} ->
+            NewBody = zlib:unzip(Body),
             {update, Session, {ok, {Status, Hdrs, NewBody}}, State};
         _ ->
             noaction
