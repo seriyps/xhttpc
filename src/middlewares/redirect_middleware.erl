@@ -15,7 +15,7 @@
 -behaviour(xhttpc_middleware).
 
 -export([init/1, request/3, response/4, call/2, terminate/2]).
--export([absolute_url/2]).
+-export([absolute_url/2, format_url/1]).
 
 -include("xhttpc.hrl").
 
